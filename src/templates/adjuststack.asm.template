@@ -1,0 +1,15 @@
+$external_objects
+global alignstack
+
+segment .text
+
+alignstack:
+    push rbp                    
+    mov rbp, rsp                
+    and rsp, byte -0x10            
+    sub rsp, byte +0x20         
+    $call_statements            
+    mov rsp, rbp                
+    pop rbp                     
+    ret                         
+

