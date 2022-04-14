@@ -74,9 +74,10 @@ Apocrypha flags:
     filepath of the custom PIC file you want to include in shellcode
 ```
 ## Custom Flag (-c --custom)
-Point this filepath to your custom PIC. You can use the mycustomcode.c as a template. It must follow 2 constraints:
+Point this filepath to your custom PIC. You can use the mycustomcode.c as a template. It must follow 3 constraints:
 1. The code must be in a function named "custom"
-2. It must be position independent (duh). Go look at the credits section at codewhitesec's HandleKatz project. The PDF in there (PICYourMalware.pdf) has everything you need to know.
+2. getFunctionPtr(dll_name, function_name) which dynamically resolves function addresses takes djb2 hashes of the strings for the module name (unicode string) and function name (ANSI string). You can use djb2.py to generate djb2 hashes for this.
+3. It must be position independent (duh). Go look at the credits section at codewhitesec's HandleKatz project. The PDF in there (PICYourMalware.pdf) has everything you need to know.
 ## Credits
 - Implementation of PIC by https://github.com/codewhitesec/HandleKatz and all their relevant credit section folks.
 
