@@ -18,4 +18,4 @@ if sys.argv[1] == 'a':
 elif sys.argv[1] == 'u':
     print(hex(unicode_hash_djb2(sys.argv[2])))
 else:
-    print("Unknown encoding... the only options are 'a' for ASCII or 'u' for unicode\n Syntax: python3 djb2.py u kernel32.dll
+    print("Unknown encoding... the only options are 'a' for ASCII or 'u' for unicode\n Syntax: python3 djb2.py u kernel32.dll")
