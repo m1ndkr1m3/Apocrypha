@@ -39,20 +39,25 @@ extern "C" uint64_t custom(void)
         return 1;
     }
 
-    // Build a structure with the function you want to call and its args to pass to TpAllocWork for CALLBACK
+    // Build a structure with the function you want to call and its args to pass to TpAllocWork
+    // FOR SIMPLICITY SAKE WITH UNWRAPPING STRUCTURE IN HIDECALLSTACK.ASM, JUST MAKE EVERY VALUE 8 BYTES LONG
     typedef struct _NTALLOCATEVIRTUALMEMORY_ARGS {
         UINT_PTR pNtAllocateVirtualMemory;   // pointer to NtAllocateVirtualMemory - rax
         HANDLE hProcess;                     // HANDLE ProcessHandle - rcx
-        PVOID* address;                      // PVOID *BaseAddress - rdx; ULONG_PTR ZeroBits - 0 - r8
-        PSIZE_T size;                        // PSIZE_T RegionSize - r9; ULONG AllocationType - MEM_RESERVE|MEM_COMMIT = 3000 - stack pointer
-        ULONG permissions;                   // ULONG Protect - PAGE_EXECUTE_READ - 0x20 - stack pointer
+        LPVOID* address;                      // PVOID *BaseAddress - rdx; 
+        ULONGLONG zerobits;                      // ULONG ZeroBits - 0 - r8
+        PSIZE_T size;                        // PSIZE_T RegionSize - r9;
+        ULONGLONG allocationtype;                 // ULONG AllocationType - MEM_RESERVE|MEM_COMMIT
+        ULONGLONG permissions;                   // ULONG Protect - PAGE_EXECUTE_READWRITE
     } NTALLOCATEVIRTUALMEMORY_ARGS, *PNTALLOCATEVIRTUALMEMORY_ARGS;
     // Set values in struct
     NTALLOCATEVIRTUALMEMORY_ARGS ntAllocateVirtualMemoryArgs = { 0 };
     ntAllocateVirtualMemoryArgs.pNtAllocateVirtualMemory = ntallocatevirtualmemory_ptr;
     ntAllocateVirtualMemoryArgs.hProcess = (HANDLE)-1;
     ntAllocateVirtualMemoryArgs.address = &allocatedAddress;
+    ntAllocateVirtualMemoryArgs.zerobits = 0;
     ntAllocateVirtualMemoryArgs.size = &allocatedsize;
+    ntAllocateVirtualMemoryArgs.allocationtype = MEM_RESERVE|MEM_COMMIT;
     ntAllocateVirtualMemoryArgs.permissions = PAGE_EXECUTE_READWRITE;
 
     // Pass your struct and a ptr to hidecallstack into CallStackEvasion()
