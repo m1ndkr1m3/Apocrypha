@@ -7,10 +7,10 @@ hidecallstack:
     mov rax, [rbx]              ; ptr_to_function
     mov rcx, [rbx + 0x8]        ; Arg 1
     mov rdx, [rbx + 0x10]       ; Arg 2
-    xor r8, r8                  ; Arg 3
-    mov r9, [rbx + 0x18]        ; Arg 4
-    mov r10, [rbx + 0x20]       ; 
-    mov [rsp+0x30], r10         ; ptr to shadow space Arg 5
-    mov r10, 0x3000             ; 
-    mov [rsp+0x28], r10         ; ptr to shadow space Arg 6
+    xor r8, [rbx + 0x18]        ; Arg 3
+    mov r9, [rbx + 0x20]        ; Arg 4
+    mov r10, [rbx + 0x28]       ; everything 8 bytes for simplicity sake
+    mov [rsp+0x28], r10         ; ptr to shadow space Arg 5
+    mov r10, [rbx + 0x30]       ; everything 8 bytes for simplicity sake
+    mov [rsp+0x30], r10         ; ptr to shadow space Arg 6
     jmp rax                     ; jmp to ptr_to_function
