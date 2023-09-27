@@ -1,0 +1,14 @@
+ENTRY(alignstack)
+SECTIONS
+{
+	.text :
+	{
+        *(.text.alignstack)
+	    {{- range $value := .TemplateCallModules}}
+        *(.text.{{- $value}})
+        {{- end}}
+		{{- range $value := .TemplateHelperModules}}
+        *(.text.{{- $value}})
+        {{- end}}                
+	}
+}

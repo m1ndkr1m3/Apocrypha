@@ -1,0 +1,14 @@
+---
+mode: "shellcode"               # ['shellcode','wrapper']
+in_file: "_lib/callstack_evasion_example.cpp"           # string - Full path to custom code
+out_filename: "callstack"               # string - REQUIRED: give your file a name (no extension)
+encrypt: "xor"                  # string - options are "xor" or ""  for now
+debug: false
+shellcode_opts:                   
+  edr_hooks: "stomp"              # ['stomp'] or leave field empty
+  edr_tool: "crowdstrike"         # ['crowdstrike'] - required if edr_hooks is set
+  hide_call_stack: true           # WIP - bool - true || false
+  polymorph: false                # bool - true || false
+  antianalysis: false             # bool - true || false
+wrapper_opts:
+  format: "rust_exe"                  # string - required in wrapper mode 

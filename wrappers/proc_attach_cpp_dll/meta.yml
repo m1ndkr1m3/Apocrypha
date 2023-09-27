@@ -1,0 +1,6 @@
+---
+detected: true  # bool - required
+template_filename: "proc_attach_cpp_dll.cpp.template" # string - required
+language: "cpp" # string - required
+filetype: "dll" # string - required
+description: "On PROCESS_ATTACH allocates memory for shellcode by creating a new heap, memcpy shellcode into it and then creates a pointer to the buffer and calls it"

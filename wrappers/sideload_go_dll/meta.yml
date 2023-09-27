@@ -1,0 +1,9 @@
+---
+detected: true  # bool - required
+template_filename: "sideload_go_dll.go.template" # string - required
+language: "go" # string - required
+filetype: "dll" # string - required
+description: "When exported function is called, allocates memory for shellcode by creating a new heap, memcpy shellcode into it and then creates a pointer to the buffer and calls it"
+# User options
+export_name: "eglBindAPI" # string - this string should be the name of the exported function you want to put your shellcode in
+input_dll: "../../libEGL.dll" # string - required - path to the real dll you want to sideload from (Apocrypha will the copy exports from it)

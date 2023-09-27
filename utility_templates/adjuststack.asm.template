@@ -1,0 +1,22 @@
+{{range $value := .TemplateCallModules}}
+extern {{$value -}}
+{{- end}}
+{{- range $value := .TemplateHelperModules}}
+extern {{$value -}}
+{{- end}}
+global alignstack
+
+segment .text
+
+alignstack:
+    push rbp                    
+    mov rbp, rsp                
+    and rsp, byte -0x10            
+    sub rsp, byte +0x20         
+    {{- range $value := .TemplateCallModules}}
+    call {{$value -}}
+    {{- end}}        
+    mov rsp, rbp                
+    pop rbp                     
+    ret                         
+

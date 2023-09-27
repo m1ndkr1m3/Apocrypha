@@ -1,0 +1,8 @@
+---
+detected: true  # bool - required
+template_filename: "rust_exe.rs.template" # string - required
+language: "rs" # string - required
+filetype: "exe" # string - required
+description: "Allocates memory for shellcode using VirtualAlloc, copies shellcode into it and then creates inline asm to jmp to new buffer"
+# User options
+cargo_file: "cargo.toml.template" # required - string

@@ -1,0 +1,7 @@
+---
+detected: true  # bool - required
+template_filename: "cpp_dll.cpp.template" # string - required
+language: "cpp" # string - required
+filetype: "dll" # string - required
+description: "When exported function is called, allocates memory for shellcode by creating a new heap, memcpy shellcode into it and then creates a pointer to the buffer and calls it"
+export_name: "EventStrW" # Comment this line out if you would like Apocrypha to generate a random string to use

