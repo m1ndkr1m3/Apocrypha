@@ -198,7 +198,10 @@ func ExportsFromFile(file string) ([]string, error) {
     }
 	for _,v := range pe.Export.Functions {
 		if v.Name != "Run" {
-			exports = append(exports, v.Name)
+			// sometimes there are unnamed exports
+			if len(v.Name) != 0 {
+				exports = append(exports, v.Name)
+			}
 		}
 	}
 	return exports, err
