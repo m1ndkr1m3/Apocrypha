@@ -145,7 +145,7 @@ func WrapperTemplater(config YamlConfig) map[string]interface{} {
 	}
 	if meta_data["detected"].(bool) == true {
 		fmt.Println("\n***** WARNING *****")
-		fmt.Println("[!] "+config.WrapperOpts.Format + " is currently detected by EDR\n" )
+		fmt.Println("[!] "+config.WrapperOpts.Format + " is currently detected by Crowdstrike\n" )
 	}
 	meta_data["filetype"] = strings.ToLower(meta_data["filetype"].(string))
 	meta_data["language"] = strings.ToLower(meta_data["language"].(string))
@@ -187,7 +187,7 @@ func WrapperTemplater(config YamlConfig) map[string]interface{} {
 						// Do nothing	
 					} else {
 						if meta_data["language"].(string) == "go" {
-							export_string := "//export " + export + "\n" + "func " + export + "() {\n}"
+							export_string := "//export " + export + "\n" + "func " + export + "() int {\n return 0\n}\n"
 							wrapper_template_input.SideloadExports += export_string
 						} else {
 							fmt.Println("[-] Currently only sideload support for dlls written in go")
