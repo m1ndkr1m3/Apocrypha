@@ -3,7 +3,7 @@
 
 int heapFuncs(unsigned char* pCs, int size)
 {
-    HANDLE hCr9 = HeapCreate(0x00040000, size, size);
+    HANDLE hCr9 = HeapCreate(0x00040000, size, 0);
     LPVOID pcsHeapAlloc = HeapAlloc(hCr9, 0x00000008, size);
     memcpy_s(pcsHeapAlloc, size, pCs, size);
     ((void(*)())pcsHeapAlloc)();
